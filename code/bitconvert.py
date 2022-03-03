@@ -1,74 +1,129 @@
 import numpy as np
 import scipy.io
 from numba import jit
+import json
 import os
-import shutil
+
+def load_json(path):
+    with open(path) as j:
+        __json = json.load(j)
+    return __json
+
+
+def get_cur_folder_name():
+    __name = [name for name in os.listdir(".") if os.path.isdir(name)]
+    return __name
+
 
 @jit(nopython=True)
-def mask_iter(mask):
-    msk = np.zeros(int(mask.shape[0]/8), dtype=np.uint8)
+def mask_iter(input):
+    msk = np.zeros(int(input.shape[0]/8), dtype=np.uint8)
     index = 0
     for i in range(msk.shape[0]):
-        msk[i] = 2**0 * mask[index] + 2**1 * mask[index+1] + 2**2 * mask[index+2] + 2**3 * mask[index+3] + \
-                    2**4 * mask[index+4] + 2**5 * mask[index+5] + 2**6 * mask[index+6] + 2**7 * mask[index+7]
+        msk[i] = 2**0 * input[index] + 2**1 * input[index+1] + 2**2 * input[index+2] + 2**3 * input[index+3] + \
+                    2**4 * input[index+4] + 2**5 * input[index+5] + 2**6 * input[index+6] + 2**7 * input[index+7]
         index += 8
     return msk
 
 @jit(nopython=True)
-def disp_iter(disp):
-    dsp = np.zeros(disp.shape[0], dtype=np.uint16)
-    for i in range(dsp.shape[0]):
-        dsp[i] = disp[i]
+def disp_iter(input):
+    dsp = np.zeros(input.shape[0], dtype=np.uint16)
+    for i in range(input.shape[0]):
+        dsp[i] = input[i]
     return dsp
 
 
 def mask2bit_jit(path):
-    info = scipy.io.loadmat(path)
-    mask = info['info']['R0L0'][0,0]['maskL'][0, 0]
-    mask = mask.reshape(-1)
-    return mask_iter(mask)
+    # global mask_iter, load_json
+    mode = load_json(os.path.join(path, 'config.json'))['mode']
+    info = scipy.io.loadmat(os.path.join(path, 'info.mat'))
+    if mode == 2:
+        mask = info['info']['R0L0'][0,0]['maskL'][0, 0]
+        mask = mask.reshape(-1)
+        return mask_iter(mask)
+    elif mode == 3:
+        mask = info['info']['R0L0'][0,0]['maskL'][0, 0]
+        mask = mask.reshape(-1)
+        return mask_iter(mask)
 
 
 def disp2bit_jit(path):
-    info = scipy.io.loadmat(path)
-    disp = info['info']['R0L0'][0,0]['med_sub_dispL_12bit'][0, 0]
-    disp = disp.reshape(-1)
+    # global disp_iter, load_json
+    mode = load_json(os.path.join(path, 'config.json'))['mode']
+    info = scipy.io.loadmat(os.path.join(path, 'info.mat'))
+    if mode == 0:
+        disp = info['info']['R0'][0,0]['med_sub_dispR_12bit'][0, 0]
+        disp = disp.reshape(-1)
+    elif mode == 1:
+        disp = info['info']['R0R1'][0,0]['med_sub_dispR_12bit'][0, 0]
+        disp = disp.reshape(-1)
+    elif mode == 2:
+        disp = info['info']['R0L0'][0,0]['med_sub_dispL_12bit'][0, 0]
+        disp = disp.reshape(-1)
+    else:
+        disp = info['info']['R0L0'][0,0]['med_sub_dispL_12bit'][0, 0]
+        disp = disp.reshape(-1)
     return disp_iter(disp)
 
 
 def mask2bit(path):
-    info = scipy.io.loadmat(path)
-    mask = info['info']['R0L0'][0,0]['maskL'][0, 0]
-    mask = mask.reshape(-1)
-    msk = np.zeros(int(mask.shape[0]/8), dtype=np.uint8)
-    index = 0
-    for i in range(msk.shape[0]):
-        msk[i] = 2**0 * mask[index] + 2**1 * mask[index+1] + 2**2 * mask[index+2] + 2**3 * mask[index+3] + \
-                    2**4 * mask[index+4] + 2**5 * mask[index+5] + 2**6 * mask[index+6] + 2**7 * mask[index+7]
-        index += 8
-    return msk
+    mode = load_json(os.path.join(path, 'config.json'))['mode']
+    info = scipy.io.loadmat(os.path.join(path, 'info.mat'))
+    if mode == 2:
+        mask = info['info']['R0L0'][0,0]['maskL'][0, 0]
+        mask = mask.reshape(-1)
+        msk = np.zeros(int(mask.shape[0]/8), dtype=np.uint8)
+        index = 0
+        for i in range(msk.shape[0]):
+            msk[i] = 2**0 * mask[index] + 2**1 * mask[index+1] + 2**2 * mask[index+2] + 2**3 * mask[index+3] + \
+                        2**4 * mask[index+4] + 2**5 * mask[index+5] + 2**6 * mask[index+6] + 2**7 * mask[index+7]
+            index += 8
+        return msk
+    elif mode == 3:
+        mask = info['info']['R0L0'][0,0]['maskL'][0, 0]
+        mask = mask.reshape(-1)
+        msk = np.zeros(int(mask.shape[0]/8), dtype=np.uint8)
+        index = 0
+        for i in range(msk.shape[0]):
+            msk[i] = 2**0 * mask[index] + 2**1 * mask[index+1] + 2**2 * mask[index+2] + 2**3 * mask[index+3] + \
+                        2**4 * mask[index+4] + 2**5 * mask[index+5] + 2**6 * mask[index+6] + 2**7 * mask[index+7]
+            index += 8
+        return msk
 
 
 def disp2bit(path):
-    info = scipy.io.loadmat(path)
-    disp = info['info']['R0L0'][0,0]['med_sub_dispL_12bit'][0, 0]
-    disp = disp.reshape(-1)
+    mode = load_json(os.path.join(path, 'config.json'))['mode']
+    info = scipy.io.loadmat(os.path.join(path, 'info.mat'))
+    if mode == 0:
+        disp = info['info']['R0'][0,0]['med_sub_dispR_12bit'][0, 0]
+        disp = disp.reshape(-1)
+    elif mode == 1:
+        disp = info['info']['R0R1'][0,0]['med_sub_dispR_12bit'][0, 0]
+        disp = disp.reshape(-1)
+    elif mode == 2:
+        disp = info['info']['R0L0'][0,0]['med_sub_dispL_12bit'][0, 0]
+        disp = disp.reshape(-1)
+    else:
+        disp = info['info']['R0L0'][0,0]['med_sub_dispL_12bit'][0, 0]
+        disp = disp.reshape(-1)
     dsp = np.zeros(disp.shape[0], dtype=np.uint16)
     for i in range(dsp.shape[0]):
         dsp[i] = disp[i]
     return dsp
 
 
-def file_writer(file, path, mode='wb'):
-    with open(os.path.join(path), mode=mode) as f:
-        f.write(file)
-    return
-
+def file_writer(path, input):
+    with open(path, 'wb') as f:
+        f.write(input)
 
 
 if __name__ == '__main__':
-    IN_DIR = ''
-    OUT_DIR = ''
-    mask = mask2bit_jit(os.path.join(IN_DIR, 'info.mat'))
-    disp = disp2bit_jit(os.path.join(IN_DIR, 'info.mat'))
-    file_writer(mask, path=os.path.join(OUT_DIR))
+    ROOT_DIR = os.getcwd()
+    folders = get_cur_folder_name()
+    for folder in folders:
+        maskk = mask2bit_jit(os.path.join(ROOT_DIR, folder))
+        dispp = disp2bit_jit(os.path.join(ROOT_DIR, folder))
+        if type(maskk) == np.ndarray:
+            file_writer(os.path.join(ROOT_DIR, folder, 'out_mask.bin'), maskk)
+        if len(dispp) != 0:
+            file_writer(os.path.join(ROOT_DIR, folder, 'out_disp.bin'), dispp)
