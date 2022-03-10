@@ -1,56 +1,72 @@
 import numpy as np
 import cv2
 import os
-import glob 
+import glob
 import re
 import shutil
 from PIL import Image
 import matplotlib.pyplot as plt
 
 
-
-
 def converter(in_dir, in_format, to_fromat, key, type, out_dir):
     cnt = 0
-    for img in glob.glob(os.path.join(in_dir,f'*.{in_format}')):
-        Image.open(img).convert(type).save(os.path.join(out_dir,  f'rec{key}_000{cnt}.{to_fromat}'))
+    for img in glob.glob(os.path.join(in_dir, f'*.{in_format}')):
+        Image.open(img).convert(type).save(os.path.join(
+            out_dir,  f'rect{key}_000{cnt}.{to_fromat}'))
         cnt += 1
 
 
-def yuv_converter(in_dir,in_format, key, mark, out_dir):
+def yuv_converter(in_dir, in_format, key, mark, out_dir):
     i = 0
     file_names = os.listdir(in_dir)
+    if os.path.exists(out_dir):
+        shutil.rmtree(out_dir)
+    os.makedirs(out_dir)
     for file in glob.glob(os.path.join(in_dir, f'*.{in_format}')):
         if file.find(key) != -1:
             img_name = file_names[i]
+            print(f'Original name is: {img_name}')
             img = cv2.imread(os.path.join(in_dir, img_name))
-            img = img[:,:,0]
+            # should be `2` but not `0` since opencv read img as `BGR`
+            img = img[:, :, 2]
             # get image index
             idx = [_.start() for _ in re.finditer('-', img_name)]
-            renam = img_name[idx[-2]+1 : idx[-1]-1]
-
-            with open(os.path.join(out_dir, f'rec{mark}_{renam}.yuv'),'wb') as f:
-                np.asarray(img.T, dtype=np.uint8).tofile(f)
+            renam = img_name[idx[-2]+1: idx[-1]]
+            print(f'Convert name to: {renam}')
+            with open(os.path.join(out_dir, f'rect{mark}_{renam}.yuv'), 'wb') as f:
+                np.asarray(img, dtype=np.uint8).tofile(f)
             i += 1
         else:
             raise ValueError("You have been mixed up right/left position.")
 
 
-def yuv2png(dim, key, dep_dir, out_dir):
+def yuv2bmp(dim, src_dir, dst_dir=None, dtype=np.uint8, save=False):
+    width, height = dim[0], dim[1]
+    with open(src_dir, 'rb') as f:
+        img = np.fromfile(f, dtype=dtype, count=width*height)
+        img = img.reshape((height, width)).astype(dtype)
+        cv2.imshow('bmp image', img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        if save:
+            cv2.imwrite(dst_dir, img)
+
+
+def yuv2bmpng(dim, key, dep_dir, out_dir, format, dtype=np.uint16):
     width = dim[0]
     height = dim[1]
     i = 0
     file_names = os.listdir(dep_dir)
-    file_names.remove('out_config.txt')
-    ## if do this process recursively, it will lead to the output being deleted recursively
-    # if os.path.exists(out_dir):
-    #     shutil.rmtree(out_dir)
-    os.makedirs(out_dir, exist_ok=True)
+    if 'out_config.txt' in file_names:
+        file_names.remove('out_config.txt')
+    if os.path.exists(out_dir):
+        shutil.rmtree(out_dir)
+    os.makedirs(out_dir)
     for file in glob.glob(os.path.join(dep_dir, '*.yuv')):
         if file.find(key) != -1:
             img_name = file_names[i]
-            name = img_name.replace('yuv', 'png')
-            img = np.fromfile(os.path.join(dep_dir, img_name), dtype=np.uint16)
+            name = img_name.replace('yuv', f'{format}')
+            img = np.fromfile(os.path.join(dep_dir, img_name), dtype=dtype)
             img = np.reshape(img, [height, width])
             cv2.imwrite(os.path.join(out_dir, name), img)
             i += 1
@@ -58,37 +74,34 @@ def yuv2png(dim, key, dep_dir, out_dir):
             raise ValueError("You have been mixed up right/left position.")
 
 
-def png2colormap(png_dir, color_dir, clim=[0, 0.01]):
-    # if os.path.exists(color_dir):
-    #     shutil.rmtree(color_dir)
-    os.makedirs(color_dir, exist_ok=True)
+def png2colormap(png_dir, color_dir):
+    if os.path.exists(color_dir):
+        shutil.rmtree(color_dir)
+    os.makedirs(color_dir)
     file_names = os.listdir(png_dir)
     i = 0
-    cmin = clim[0]
-    cmax = clim[1]
     for file in glob.glob(os.path.join(png_dir, '*.png')):
         img_name = file_names[i]
         print(img_name)
         print(file)
         img = plt.imread(file)
         if len(img) == 3:
-            img = img[:,:,0]
+            img = img[:, :, 0]
         sc = plt.imshow(img)
         sc.set_cmap('jet')
         # plt.colorbar()
         plt.colorbar(sc)
-        plt.clim(cmin, cmax)
+        # plt.show()
         plt.savefig(os.path.join(color_dir, img_name))
         i += 1
-
 
 
 def yuv2colormap(dep_dir, dim, out_dir):
     width = dim[0]
     height = dim[1]
-    # if os.path.exists(out_dir):
-    #     shutil.rmtree(out_dir)
-    os.makedirs(out_dir, exist_ok=True)
+    if os.path.exists(out_dir):
+        shutil.rmtree(out_dir)
+    os.makedirs(out_dir)
     file_names = os.listdir(dep_dir)
     file_names.remove('out_config.txt')
     i = 0
@@ -105,68 +118,8 @@ def yuv2colormap(dep_dir, dim, out_dir):
         name = img_name.replace('yuv', 'png')
         cv2.imwrite(os.path.join(out_dir, name), img_color)
         i += 1
-    
-        
-# def disp2depth(path, dtype, dim):
-#     with open(path) as f:
-#         disp = np.fromfile(f, dtype=dtype)
-#     print(disp.shape)
-#     h = dim[0]
-#     w = dim[1]
-#     disp = disp.reshape((h, w))    
-#     depth = np.zeros(disp.shape)
-#     for i in range(disp.shape[0]):
-#         for j in range(disp.shape[1]):
-#             depth[i,j] = float(disp[i,j]) / 64.0
-#     return depth
 
 
-# def read_raw(path, dtype, dim):
-#     with open(path) as f:
-#         raw = np.fromfile(f, dtype=dtype)
-#     h, w = dim[0], dim[1]
-#     raw = raw.reshape((h, w))
-#     return raw
-
-
-# function to display the coordinates of
-# of the points clicked on the image
-# def click_event(event, x, y, flags, params):
-
-# 	# checking for left mouse clicks
-# 	if event == cv2.EVENT_LBUTTONDOWN:
-
-# 		# displaying the coordinates
-# 		# on the Shell
-# 		print(x, ' ', y)
-
-# 		# displaying the coordinates
-# 		# on the image window
-# 		font = cv2.FONT_HERSHEY_SIMPLEX
-# 		cv2.putText(img, str(x) + ',' +
-# 					str(y), (x,y), font,
-# 					1, (255, 0, 0), 2)
-# 		cv2.imshow('image', img)
-
-# 	# checking for right mouse clicks	
-# 	if event==cv2.EVENT_RBUTTONDOWN:
-
-# 		# displaying the coordinates
-# 		# on the Shell
-# 		print(x, ' ', y)
-
-# 		# displaying the coordinates
-# 		# on the image window
-# 		font = cv2.FONT_HERSHEY_SIMPLEX
-# 		b = img[y, x, 0]
-# 		g = img[y, x, 1]
-# 		r = img[y, x, 2]
-# 		cv2.putText(img, str(b) + ',' +
-# 					str(g) + ',' + str(r),
-# 					(x,y), font, 1,
-# 					(255, 255, 0), 2)
-# 		cv2.imshow('image', img)
-    
 def file_opener(path, dtype, channels=1):
     with open(path) as f:
         out = np.fromfile(f, dtype=dtype)
@@ -181,13 +134,13 @@ def img2disp(img, dim):
     _disp = np.zeros((h, w))
     for i in range(h):
         for j in range(w):
-            _disp[i,j] = float(disp[i,j]) / 64.0
+            _disp[i, j] = float(disp[i, j]) / 64.0
     return _disp
 
 
 def raw2disp(raw, dim):
     if len(raw.shape) == 3:
-        img = raw[:,:,0]
+        img = raw[:, :, 0]
     elif len(raw.shape) == 2:
         img = raw
     else:
@@ -197,7 +150,7 @@ def raw2disp(raw, dim):
     _disp = np.zeros((h, w))
     for i in range(h):
         for j in range(w):
-            _disp[i,j] = float(disp[i,j]) / 64.0
+            _disp[i, j] = float(disp[i, j]) / 64.0
     return _disp
 
 
@@ -217,9 +170,9 @@ def calc_foc_baseline(disparity, depth, size=10, is_sample=True):
     disp_temp = disparity.reshape(-1)
     depth_temp = depth.reshape(-1)
     idx = np.where(disp_temp == 0)
-    _disp  = np.delete(disp_temp, idx)
+    _disp = np.delete(disp_temp, idx)
     _depth = np.delete(depth_temp, idx)
-    if is_sample==False:
+    if is_sample == False:
         fb = np.mean(disparity * depth)
     else:
         total_idx = np.array(range(len(disp_temp)))
@@ -234,7 +187,9 @@ def calc_foc_baseline(disparity, depth, size=10, is_sample=True):
 def disp2depth(disp, fb):
     if len(disp.shape) > 1:
         disp = disp.reshape(-1)
-    return (fb / disp)
+    depth = fb / disp
+    depth[np.where(disp == 0)] = 0
+    return depth
 
 
 def conv2d(data, kernel_size, pooling):
@@ -247,11 +202,13 @@ def conv2d(data, kernel_size, pooling):
     if pooling == 'avg':
         for i in range(h):
             for j in range(w):
-                out[i,j] = np.round(np.mean(data[i:i+kernel_size, j:j+kernel_size] * kernel))
+                out[i, j] = np.round(
+                    np.mean(data[i:i+kernel_size, j:j+kernel_size] * kernel))
     elif pooling == 'max':
         for i in range(h):
             for j in range(w):
-                out[i,j] = np.max(data[i:i+kernel_size, j:j+kernel_size] * kernel)
+                out[i, j] = np.max(
+                    data[i:i+kernel_size, j:j+kernel_size] * kernel)
     return out
 
 
@@ -268,8 +225,8 @@ def plot_grid(x, y, xrange, yrange, grid_size, suptitle, ylabel, xlabel, pooling
     for _y in y_sub:
         ax = plt.subplot(grid_size[0], grid_size[1], i)
         ax.scatter(
-        x[x_range[0]:x_range[1],_y],
-        y[x_range[0]:x_range[1],_y])
+            x[x_range[0]:x_range[1], _y],
+            y[x_range[0]:x_range[1], _y])
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
         i += 1
@@ -289,14 +246,27 @@ def plot_color_combine(x, y, xrange, yrange, grid_size, suptitle, ylabel, xlabel
     for _y in y_sub:
         ax = plt.subplot(1, 1, i)
         ax.scatter(
-        x[x_range[0]:x_range[1],_y],
-        y[x_range[0]:x_range[1],_y])
+            x[x_range[0]:x_range[1], _y],
+            y[x_range[0]:x_range[1], _y])
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
     plt.savefig(os.path.join(save_path, f'{pos}_{pooling}_{type}.png'))
 
-    
 
+if __name__ == '__main__':
+    # IN_DIR = 'D:/data/118/img/R'
+    # OUT_DIR = 'D:/data/118/img/RYUV'
+    # yuv_converter(in_dir=IN_DIR, in_format='bmp', key='right', mark='R', out_dir=OUT_DIR)
 
-    
-    
+    # src_dir = 'D:/data/118/img/rect_yuv/rectL_2070.yuv'
+    # dst_dir = 'D:/data/118/img/rect_yuv/rectL_2070.bmp'
+    # yuv2bmp(dim=[1280, 800], src_dir=src_dir, dst_dir=dst_dir, save=True)
+
+    # CANNOT SAVE IMAGE IN THIS HEIGHT!!
+    src_dir = 'D:/data/118/img/out_depth/out_depth_1871.yuv'
+    dst_dir = 'D:/data/118/img/out_depth/colorpy/out_depth_1871.png'
+    img = file_opener(src_dir, dtype=np.uint16)
+    disp = img2disp(img, [800, 1280])
+    depth = disp2depth(disp, 679.306486*54.476586)
+    os.mkdir('D:/data/118/img/out_depth/colorpy')
+    cv2.imwrite(dst_dir, np.uint16(depth))
