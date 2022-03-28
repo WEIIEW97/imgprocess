@@ -27,9 +27,8 @@ def mask_iter(input):
 
 @jit(nopython=True)
 def disp_iter(input):
-    dsp = np.zeros(input.shape[0], dtype=np.uint16)
-    for i in range(input.shape[0]):
-        dsp[i] = input[i]
+    dsp = np.zeros(int(input.shape[0]), dtype=np.uint16)
+    dsp = input     # remove '\r\n' to '\n'
     return dsp
 
 
