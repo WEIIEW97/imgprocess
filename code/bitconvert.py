@@ -106,8 +106,7 @@ def disp2bit(path):
         disp = info['info']['R0L0'][0,0]['med_sub_dispL_12bit'][0, 0]
         disp = disp.reshape(-1)
     dsp = np.zeros(disp.shape[0], dtype=np.uint16)
-    for i in range(dsp.shape[0]):
-        dsp[i] = disp[i]
+    dsp = disp
     return dsp
 
 
