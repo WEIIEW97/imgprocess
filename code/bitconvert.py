@@ -65,6 +65,25 @@ def disp2bit_jit(path):
     return disp_iter(disp)
 
 
+def disp2bit_jit_6(path):
+    # global disp_iter, load_json
+    mode = load_json(os.path.join(path, 'config.json'))['mode']
+    info = scipy.io.loadmat(os.path.join(path, 'info.mat'))
+    if mode == 0:
+        disp = info['info']['r0'][0,0]['med_sub_dispr_low6bit'][0, 0]
+        disp = disp.reshape(-1)
+    elif mode == 1:
+        disp = info['info']['r0r1'][0,0]['med_sub_dispr_low6bit'][0, 0]
+        disp = disp.reshape(-1)
+    elif mode == 2:
+        disp = info['info']['r0l0'][0,0]['med_sub_displ_low6bit'][0, 0]
+        disp = disp.reshape(-1)
+    else:
+        disp = info['info']['r0l0'][0,0]['med_sub_displ_low6bit'][0, 0]
+        disp = disp.reshape(-1)
+    return disp_iter(disp)
+
+
 def mask2bit(path):
     mode = load_json(os.path.join(path, 'config.json'))['mode']
     info = scipy.io.loadmat(os.path.join(path, 'info.mat'))
@@ -106,6 +125,28 @@ def disp2bit(path):
         disp = info['info']['R0L0'][0,0]['med_sub_dispL_12bit'][0, 0]
         disp = disp.reshape(-1)
     dsp = np.zeros(disp.shape[0], dtype=np.uint16)
+    dsp = disp
+    return dsp
+
+
+
+def disp2bit_6(path):
+    # global disp_iter, load_json
+    mode = load_json(os.path.join(path, 'config.json'))['mode']
+    info = scipy.io.loadmat(os.path.join(path, 'info.mat'))
+    if mode == 0:
+        disp = info['info']['r0'][0,0]['med_sub_dispr_low6bit'][0, 0]
+        disp = disp.reshape(-1)
+    elif mode == 1:
+        disp = info['info']['r0r1'][0,0]['med_sub_dispr_low6bit'][0, 0]
+        disp = disp.reshape(-1)
+    elif mode == 2:
+        disp = info['info']['r0l0'][0,0]['med_sub_displ_low6bit'][0, 0]
+        disp = disp.reshape(-1)
+    else:
+        disp = info['info']['r0l0'][0,0]['med_sub_displ_low6bit'][0, 0]
+        disp = disp.reshape(-1)
+    dsp = np.zeros(int(disp.shape[0]), dtype=np.uint16)
     dsp = disp
     return dsp
 
