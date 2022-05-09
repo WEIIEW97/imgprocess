@@ -6,7 +6,7 @@ import re
 import shutil
 from PIL import Image
 import matplotlib.pyplot as plt
-
+from random import sample
 
 def converter(in_dir, in_format, to_fromat, key, type, out_dir):
     cnt = 0
@@ -186,7 +186,7 @@ def calc_foc_baseline(disparity, depth, size=10, is_sample=True):
     idx = np.where(disp_temp == 0)
     _disp = np.delete(disp_temp, idx)
     _depth = np.delete(depth_temp, idx)
-    if is_sample == False:
+    if is_sample is  False:
         fb = np.mean(disparity * depth)
     else:
         total_idx = np.array(range(len(disp_temp)))
@@ -265,6 +265,43 @@ def plot_color_combine(x, y, xrange, yrange, grid_size, suptitle, ylabel, xlabel
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
     plt.savefig(os.path.join(save_path, f'{pos}_{pooling}_{type}.png'))
+
+
+def imgcrop(in_path:str, out_path:str, crop_size:list):
+    img = cv2.imread(in_path)
+    w, h = crop_size[0], crop_size[1]
+    if len(img.shape) == 3:
+        crop_r = img[:,:,2][0:h, 0:w]
+        crop_g = img[:,:,1][0:h, 0:w]
+        crop_b = img[:,:,0][0:h, 0:w]
+        crop = np.dstack((crop_r, crop_g, crop_b))
+    elif len(img.shape) == 1:
+        crop = img[0:h, 0:w]
+    cv2.imwrite(out_path, crop)
+    return
+
+def rect_lr_visualizer(left_img_path, right_img_path, thr, out_path, thickness=1, line_type=8, save=False):
+    img_l = cv2.imread(left_img_path)
+    img_r = cv2.imread(right_img_path)
+
+    lr_r = np.hstack((img_l[:,:,2], img_r[:,:,2]))
+    lr_g = np.hstack((img_l[:,:,1], img_r[:,:,1]))
+    lr_b = np.hstack((img_l[:,:,0], img_r[:,:,0]))
+
+    lr = np.dstack((lr_b, lr_g, lr_r))
+    h, w, _ = lr.shape
+    NUM_SAMP = 5
+    POINT_COLOR = (0, 0, 255)
+
+    samp_line = sample(range(thr, h-thr), NUM_SAMP)
+    for samp in samp_line:
+        cv2.line(lr, (0, samp), (w, samp), POINT_COLOR, thickness, line_type)
+    cv2.imshow('left-right rectified visualization', lr)
+    cv2.waitkey(0)
+    cv2.destroyAllWindows()
+    if save:
+        cv2.imwrite(out_path, lr)
+    return
 
 
 if __name__ == '__main__':
